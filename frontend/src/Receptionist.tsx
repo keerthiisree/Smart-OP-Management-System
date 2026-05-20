@@ -4,12 +4,12 @@ export default function ReceptionistDashboard() {
   const [formData, setFormData] = useState({
     name: '',
     age: '',
-    gender: 'Male',
+    gender: '',
     phone: '',
     address: '',
-    department: 'Dermatology',
-    doctor_name: 'Dr. S. Madhuri',
-    visit_type: 'WALK IN'
+    department: '',
+    doctor_name: '',
+    visit_type: ''
   });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedId, setGeneratedId] = useState<string | null>(null);
@@ -40,12 +40,12 @@ export default function ReceptionistDashboard() {
         setFormData({
           name: '',
           age: '',
-          gender: 'Male',
+          gender: '',
           phone: '',
           address: '',
-          department: 'Dermatology',
-          doctor_name: 'Dr. S. Madhuri',
-          visit_type: 'WALK IN'
+          department: '',
+          doctor_name: '',
+          visit_type: ''
         });
       }
     } catch (err) {
@@ -76,14 +76,14 @@ export default function ReceptionistDashboard() {
               <label className="block text-xs text-slate-400 mb-1">Full Name</label>
               <input type="text" required value={formData.name}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="Dasari Keerthi"
+                placeholder="patient name"
                 onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Age</label>
               <input type="text" required value={formData.age}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="e.g., 19Y 10M"
+                placeholder="years"
                 onChange={e => setFormData({...formData, age: e.target.value})} />
             </div>
             <div>
@@ -105,14 +105,14 @@ export default function ReceptionistDashboard() {
               <label className="block text-xs text-slate-400 mb-1">Phone Number</label>
               <input type="tel" required value={formData.phone}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="6305889328"
+                placeholder="phone no"
                 onChange={e => setFormData({...formData, phone: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Residential Address</label>
               <input type="text" required value={formData.address}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="Sheela Nagar, Visakhapatnam"
+                placeholder="residential address"
                 onChange={e => setFormData({...formData, address: e.target.value})} />
             </div>
           </div>
@@ -125,6 +125,7 @@ export default function ReceptionistDashboard() {
               <select value={formData.department}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
                 onChange={e => handleDeptChange(e.target.value)}>
+                <option value="">Select Department</option>
                 <option value="Dermatology">Dermatology</option>
                 <option value="General Medicine">General Medicine</option>
                 <option value="Pediatrics">Pediatrics</option>
