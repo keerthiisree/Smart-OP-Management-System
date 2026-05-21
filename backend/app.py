@@ -11,7 +11,6 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Initialize DB on startup
 with app.app_context():
     db = get_db_connection()
     with open('schema.sql', 'r') as f:
@@ -19,9 +18,6 @@ with app.app_context():
     db.commit()
     db.close()
 
-# ---------------------------------------------
-# RECEPTION MODULE: Register new patient
-# ---------------------------------------------
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
@@ -40,19 +36,29 @@ def register():
     db.close()
     return jsonify({"message": "Registered successfully", "visit_id": visit_id})
 
-# ---------------------------------------------
-# NURSE MODULE: View queue and submit vitals
-# ---------------------------------------------
 @app.route('/api/queue/nurse', methods=['GET'])
 def get_nurse_queue():
     db = get_db_connection()
-    visits = db.execute('''
+    # Fetch both queues for the two nurse tabs
+    waiting = db.execute('''
         SELECT v.visit_id, p.name, p.age, p.gender, v.department 
         FROM visits v JOIN patients p ON v.patient_id = p.id 
         WHERE v.status = 'WAITING_VITALS'
     ''').fetchall()
+    
+    printing = db.execute('''
+        SELECT v.visit_id, p.name, p.age, p.gender, pr.diagnosis, v.doctor_name
+        FROM visits v 
+        JOIN patients p ON v.patient_id = p.id 
+        JOIN prescriptions pr ON v.visit_id = pr.visit_id
+        WHERE v.status = 'WAITING_PRINT'
+    ''').fetchall()
     db.close()
-    return jsonify([dict(ix) for ix in visits])
+    
+    return jsonify({
+        "waiting": [dict(ix) for ix in waiting],
+        "printing": [dict(ix) for ix in printing]
+    })
 
 @app.route('/api/vitals', methods=['POST'])
 def submit_vitals():
@@ -69,9 +75,6 @@ def submit_vitals():
     db.close()
     return jsonify({"message": "Vitals recorded"})
 
-# ---------------------------------------------
-# DOCTOR MODULE: View queue and prescribe
-# ---------------------------------------------
 @app.route('/api/queue/doctor', methods=['GET'])
 def get_doctor_queue():
     db = get_db_connection()
@@ -101,10 +104,20 @@ def prescribe():
                           VALUES (?, ?, ?, ?, ?, ?, ?)''',
                        (prescription_id, med['name'], med['route'], med['dose'], med['frequency'], med['timing'], med['duration']))
                        
+    # Send patient back to the nurse for printing
+    db.execute("UPDATE visits SET status = 'WAITING_PRINT' WHERE visit_id = ?", (visit_id,))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Prescription forwarded to print desk"})
+
+@app.route('/api/print/complete', methods=['POST'])
+def complete_print():
+    visit_id = request.json.get('visit_id')
+    db = get_db_connection()
     db.execute("UPDATE visits SET status = 'COMPLETED' WHERE visit_id = ?", (visit_id,))
     db.commit()
     db.close()
-    return jsonify({"message": "Prescription saved"})
+    return jsonify({"message": "Session finalized successfully"})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

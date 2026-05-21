@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function ReceptionistDashboard() {
   const [formData, setFormData] = useState({
     name: '',
-    age: '',
+    dob: '', 
     gender: '',
     phone: '',
     address: '',
@@ -14,39 +14,32 @@ export default function ReceptionistDashboard() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedId, setGeneratedId] = useState<string | null>(null);
 
-  // Auto-assign doctor based on department selection just to make it slick
+  // CHANGED: Reference for the native calendar popup
+  const dobInputRef = useRef<HTMLInputElement>(null);
+
   const handleDeptChange = (dept: string) => {
     let doc = 'Dr. General';
-    if (dept === 'Dermatology') doc = 'Dr. S. Madhuri';
-    if (dept === 'Pediatrics') doc = 'Dr. A. K. Sharma';
-    if (dept === 'Cardiology') doc = 'Dr. V. Prasad';
-    
+    if (dept === 'Dermatology') doc = 'Dr. Dermatology';
+    if (dept === 'Pediatrics') doc = 'Dr. Pediatrics';
+    if (dept === 'Cardiology') doc = 'Dr. Cardiology';
+
     setFormData({ ...formData, department: dept, doctor_name: doc });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = { ...formData, age: formData.dob };
       const response = await fetch('http://127.0.0.1:5000/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await response.json();
       if (response.ok) {
         setSuccessMessage("Patient Registered & Added to Nurse Queue!");
         setGeneratedId(data.visit_id);
-        // Reset form
-        setFormData({
-          name: '',
-          age: '',
-          gender: '',
-          phone: '',
-          address: '',
-          department: '',
-          doctor_name: '',
-          visit_type: ''
-        });
+        setFormData({ name: '', dob: '', gender: '', phone: '', address: '', department: '', doctor_name: '', visit_type: '' });
       }
     } catch (err) {
       console.error("Error registering patient:", err);
@@ -57,7 +50,7 @@ export default function ReceptionistDashboard() {
     <div className="min-h-screen bg-dark text-white p-6 font-sans">
       <div className="max-w-2xl mx-auto bg-slate-800 p-8 rounded-xl shadow-xl border border-slate-700">
         <div className="border-b border-slate-700 pb-4 mb-6">
-          <h2 className="text-3xl font-bold text-brand">KIMS-Icon Front Desk</h2>
+          <h2 className="text-3xl font-bold text-brand">Hospital Front Desk</h2>
           <p className="text-slate-400 text-sm mt-1">Out-Patient Registration & Routing Module</p>
         </div>
 
@@ -69,28 +62,36 @@ export default function ReceptionistDashboard() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section 1: Demographics */}
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">1. Patient Demographics</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-1">
               <label className="block text-xs text-slate-400 mb-1">Full Name</label>
               <input type="text" required value={formData.name}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="patient name"
+                placeholder="Patient Name"
                 onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
+            
+            {/* CHANGED: Date input opens picker automatically on click */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Age</label>
-              <input type="text" required value={formData.age}
-                className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="years"
-                onChange={e => setFormData({...formData, age: e.target.value})} />
+              <label className="block text-xs text-slate-400 mb-1">Date of Birth</label>
+              <input 
+                type="date" 
+                ref={dobInputRef}
+                onClick={() => dobInputRef.current?.showPicker()}
+                required 
+                value={formData.dob}
+                className="w-full bg-slate-900 border border-slate-600 rounded p-2.5 focus:outline-none focus:border-brand text-brand cursor-pointer"
+                onChange={e => setFormData({...formData, dob: e.target.value})} 
+              />
             </div>
+
             <div>
               <label className="block text-xs text-slate-400 mb-1">Gender</label>
-              <select value={formData.gender}
+              <select value={formData.gender} required
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
                 onChange={e => setFormData({...formData, gender: e.target.value})}>
+                <option value="">Select Gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
@@ -98,31 +99,29 @@ export default function ReceptionistDashboard() {
             </div>
           </div>
 
-          {/* Section 2: Contact Info */}
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">2. Contact & Address Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Phone Number</label>
               <input type="tel" required value={formData.phone}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="phone no"
+                placeholder="Phone Number"
                 onChange={e => setFormData({...formData, phone: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Residential Address</label>
               <input type="text" required value={formData.address}
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
-                placeholder="residential address"
+                placeholder="Residential Address"
                 onChange={e => setFormData({...formData, address: e.target.value})} />
             </div>
           </div>
 
-          {/* Section 3: Routing */}
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">3. Department & Doctor Assignment</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Patient Concern / Dept</label>
-              <select value={formData.department}
+              <select value={formData.department} required
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
                 onChange={e => handleDeptChange(e.target.value)}>
                 <option value="">Select Department</option>
@@ -139,9 +138,10 @@ export default function ReceptionistDashboard() {
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Visit Type</label>
-              <select value={formData.visit_type}
+              <select value={formData.visit_type} required
                 className="w-full bg-slate-900 border border-slate-600 rounded p-3 focus:outline-none focus:border-brand"
                 onChange={e => setFormData({...formData, visit_type: e.target.value})}>
+                <option value="">Select Type</option>
                 <option value="WALK IN">WALK IN</option>
                 <option value="APPOINTMENT">APPOINTMENT</option>
                 <option value="EMERGENCY">EMERGENCY</option>
