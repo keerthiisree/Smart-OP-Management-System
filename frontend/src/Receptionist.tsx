@@ -14,7 +14,6 @@ export default function ReceptionistDashboard() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedId, setGeneratedId] = useState<string | null>(null);
 
-  // CHANGED: Reference for the native calendar popup
   const dobInputRef = useRef<HTMLInputElement>(null);
 
   const handleDeptChange = (dept: string) => {
@@ -26,22 +25,47 @@ export default function ReceptionistDashboard() {
     setFormData({ ...formData, department: dept, doctor_name: doc });
   };
 
+  // NEW: Calculates actual numerical age from the Date of Birth string
+  const calculateAge = (dobString: string) => {
+    if (!dobString) return '';
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = { ...formData, age: formData.dob };
+      // Passes the calculated numerical age to the Python backend
+      const payload = { ...formData, age: calculateAge(formData.dob) };
+      
       const response = await fetch('http://127.0.0.1:5000/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      
       const data = await response.json();
+      
+      // UPDATED: Now properly handles server rejections
       if (response.ok) {
         setSuccessMessage("Patient Registered & Added to Nurse Queue!");
         setGeneratedId(data.visit_id);
         setFormData({ name: '', dob: '', gender: '', phone: '', address: '', department: '', doctor_name: '', visit_type: '' });
+        
+        // Hide success message after 5 seconds
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        alert(`Server Error: Could not register patient. The database might be missing a required field.`);
+        console.error("Server returned:", data);
       }
     } catch (err) {
+      alert("Network Error: Could not connect to the Python backend. Is app.py running?");
       console.error("Error registering patient:", err);
     }
   };
@@ -72,7 +96,6 @@ export default function ReceptionistDashboard() {
                 onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             
-            {/* CHANGED: Date input opens picker automatically on click */}
             <div>
               <label className="block text-xs text-slate-400 mb-1">Date of Birth</label>
               <input 

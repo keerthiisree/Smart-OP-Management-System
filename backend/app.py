@@ -78,8 +78,10 @@ def submit_vitals():
 @app.route('/api/queue/doctor', methods=['GET'])
 def get_doctor_queue():
     db = get_db_connection()
+    # UPDATED: Added heart_rate, bmi, spO2 to the SELECT statement
     visits = db.execute('''
-        SELECT v.visit_id, p.name, p.age, p.gender, vt.temperature, vt.bp, vt.weight 
+        SELECT v.visit_id, p.name, p.age, p.gender, 
+               vt.temperature, vt.bp, vt.heart_rate, vt.bmi, vt.spO2, vt.weight 
         FROM visits v 
         JOIN patients p ON v.patient_id = p.id 
         LEFT JOIN vitals vt ON v.visit_id = vt.visit_id

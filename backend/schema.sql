@@ -1,10 +1,13 @@
 CREATE TABLE IF NOT EXISTS patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    age TEXT,
+    dob DATE,                      -- NEW: Stores the actual birth date from the calendar picker
+    age INTEGER,                   -- UPDATED: Enforced as an integer, not text
     gender TEXT,
     phone TEXT,
     address TEXT,
+    organ_donor BOOLEAN DEFAULT 0, -- NEW: MedChain Hook (Flags highly sensitive data)
+    blockchain_hash TEXT,          -- NEW: MedChain Hook (Stores the cryptographic transaction ID)
     registration_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -13,8 +16,8 @@ CREATE TABLE IF NOT EXISTS visits (
     patient_id INTEGER,
     department TEXT,
     doctor_name TEXT,
-    visit_type TEXT, -- e.g., 'WALK IN'
-    status TEXT DEFAULT 'WAITING_VITALS', -- Queue Status: WAITING_VITALS, WAITING_DOCTOR, COMPLETED
+    visit_type TEXT, 
+    status TEXT DEFAULT 'WAITING_VITALS', -- Queue Status: WAITING_VITALS, WAITING_DOCTOR, WAITING_PRINT, COMPLETED
     visit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients (id)
 );
@@ -24,11 +27,12 @@ CREATE TABLE IF NOT EXISTS vitals (
     visit_id TEXT,
     temperature REAL,
     heart_rate INTEGER,
-    bp TEXT, -- e.g., 120/80
+    bp TEXT, 
     spO2 INTEGER,
     height REAL,
     weight REAL,
     bmi REAL,
+    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- NEW: Legal audit timestamp for nursing
     FOREIGN KEY (visit_id) REFERENCES visits (visit_id)
 );
 
@@ -37,6 +41,7 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     visit_id TEXT,
     diagnosis TEXT,
     follow_up_date TEXT,
+    prescribed_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- NEW: Legal audit timestamp for physicians
     FOREIGN KEY (visit_id) REFERENCES visits (visit_id)
 );
 
@@ -47,7 +52,7 @@ CREATE TABLE IF NOT EXISTS medications (
     route TEXT,
     dose TEXT,
     frequency TEXT,
-    timing TEXT, -- e.g., 'After Food'
+    timing TEXT, 
     duration TEXT,
     FOREIGN KEY (prescription_id) REFERENCES prescriptions (id)
 );

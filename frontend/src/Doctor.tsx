@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
+// UPDATED: Added heart_rate, bmi, and spO2 to the interface
 interface DoctorPatient {
   visit_id: string;
   name: string;
   age: string;
   gender: string;
-  temperature: number;
+  temperature: number | string;
   bp: string;
-  weight: number;
+  weight: number | string;
+  heart_rate: number | string;
+  bmi: number | string;
+  spO2: number | string;
 }
 
 interface MedicationRow {
@@ -27,13 +31,11 @@ export default function DoctorDashboard() {
   const [diagnosis, setDiagnosis] = useState('');
   const [followUp, setFollowUp] = useState('');
   
-  // CHANGED: Defaults to completely unticked and 1 day duration
   const [medications, setMedications] = useState<MedicationRow[]>([
     { name: '', route: 'Oral', morning: false, afternoon: false, night: false, timing: 'After Food', duration: 1 }
   ]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
-  // Reference for the calendar picker
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const fetchQueue = async () => {
@@ -52,7 +54,6 @@ export default function DoctorDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // CHANGED: Added row matches the new blank defaults
   const addMedicationRow = () => {
     setMedications([...medications, { name: '', route: 'Oral', morning: false, afternoon: false, night: false, timing: 'After Food', duration: 1 }]);
   };
@@ -134,11 +135,39 @@ export default function DoctorDashboard() {
 
           {selectedPatient ? (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div><span className="text-slate-400 block text-xs">Patient</span><strong>{selectedPatient.name}</strong></div>
-                <div><span className="text-slate-400 block text-xs">ID</span><span className="font-mono text-brand">{selectedPatient.visit_id}</span></div>
-                <div><span className="text-slate-400 block text-xs">BP</span><span className="font-mono text-amber-400">{selectedPatient.bp} mmHg</span></div>
-                <div><span className="text-slate-400 block text-xs">Weight</span><span>{selectedPatient.weight} kg</span></div>
+              
+              {/* UPDATED: Enhanced Patient Info & Vitals Display */}
+              <div className="space-y-4">
+                {/* Basic Demographics */}
+                <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div><span className="text-slate-400 block text-xs">Patient</span><strong>{selectedPatient.name} ({selectedPatient.age}/{selectedPatient.gender.charAt(0)})</strong></div>
+                  <div><span className="text-slate-400 block text-xs">ID</span><span className="font-mono text-brand">{selectedPatient.visit_id}</span></div>
+                  <div><span className="text-slate-400 block text-xs">Weight</span><span>{selectedPatient.weight ? `${selectedPatient.weight} kg` : '--'}</span></div>
+                  <div><span className="text-slate-400 block text-xs">SpO2</span><span className="font-mono text-emerald-400">{selectedPatient.spO2 ? `${selectedPatient.spO2}%` : '--'}</span></div>
+                </div>
+
+                {/* Vitals Grid Component */}
+                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
+                    <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider border-b border-slate-700 pb-2">Triage Vitals</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-slate-900 p-3 rounded border border-slate-700">
+                            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Temperature</span>
+                            <span className="font-mono text-lg text-white">{selectedPatient.temperature || '--'} °F</span>
+                        </div>
+                        <div className="bg-slate-900 p-3 rounded border border-slate-700">
+                            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Blood Pressure</span>
+                            <span className="font-mono text-lg text-amber-400">{selectedPatient.bp || '--'}</span>
+                        </div>
+                        <div className="bg-slate-900 p-3 rounded border border-slate-700">
+                            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Heart Rate</span>
+                            <span className="font-mono text-lg text-white">{selectedPatient.heart_rate || '--'} bpm</span>
+                        </div>
+                        <div className="bg-slate-900 p-3 rounded border border-slate-700">
+                            <span className="text-[10px] text-slate-400 block uppercase tracking-wider">BMI</span>
+                            <span className="font-mono text-lg text-white">{selectedPatient.bmi || '--'}</span>
+                        </div>
+                    </div>
+                </div>
               </div>
 
               <div>
@@ -207,7 +236,6 @@ export default function DoctorDashboard() {
                 </div>
               </div>
 
-              {/* CHANGED: Follow up Calendar with showPicker() */}
               <div className="w-full md:w-1/3">
                 <label className="block text-xs uppercase text-slate-400 mb-1 font-semibold">Next Consultation Date</label>
                 <input 
