@@ -1,6 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Printer, Download } from 'lucide-react';
 
+// DOCTOR PROFILES DIRECTORY (For Print Lookups)
+const DOCTOR_PROFILES: Record<string, { specialties: string, degrees: string }> = {
+  "Dr. K Dileep Kumar": { specialties: "Diabetologist, Endocrinologist", degrees: "MBBS, MD Medicine, DM Endocrinology" },
+  "Dr. KAV Subrahmanyam": { specialties: "Diabetologist, Endocrinologist", degrees: "MBBS, MD Medicine, DM Endocrinology" },
+  "Dr. G Sri Harsha": { specialties: "Endocrinologist", degrees: "MBBS, MD Medicine, DM Endocrinology" },
+  "Dr. Raju Butchi": { specialties: "Neurologist", degrees: "MBBS, MD Medicine, DM Neurology" },
+  "Dr. T Narayana Rao": { specialties: "Dermatologist", degrees: "MBBS, MD Dermatology" },
+  "Dr. ISV Siva Prasada Rao": { specialties: "Ophthalmologist", degrees: "MBBS, MS Ophthalmology" },
+  "Dr. K V V Satyanarayana": { specialties: "Ophthalmologist", degrees: "MBBS, MS Ophthalmology" },
+  "Dr. K Padmavathi": { specialties: "Obstetrician and Gynaecologist", degrees: "MBBS, MD Obstetrics & Gynaecology" },
+  "Dr. Krishna Kishore T": { specialties: "ENT Specialist", degrees: "MBBS, MS ENT" },
+  "Dr. P Sivananda": { specialties: "Orthopedic Doctor, Spine Surgeon", degrees: "MBBS, MS Orthopaedics, Fellow in Spine Surgery" },
+  "Dr. G Manohar": { specialties: "General Surgeon, Urologist", degrees: "MBBS, MS General Surgery, MCh Urology" },
+  "Dr. C J R Mani Kumar": { specialties: "Joint Replacement Surgeon, Orthopedic Doctor", degrees: "MBBS, MS Orthopaedics" },
+  "Dr. B Nageswara Rao": { specialties: "ENT Specialist", degrees: "MBBS, MS ENT" },
+  "Dr. BB Phani Kumar": { specialties: "General Physician, Nephrologist", degrees: "MBBS, MD General Medicine, DM Nephrology" },
+  "Dr. B Ramesh": { specialties: "Urologist", degrees: "MBBS, MS General Surgery, Mch Urology" },
+  "Dr. L R S Girinadh": { specialties: "Gastroenterologist and Hepatologist", degrees: "MBBS, MD Gastro" },
+  "Dr. S Gopi": { specialties: "Neurologist", degrees: "MBBS, MD Medicine, DM Neurology" },
+  "Dr. Chandra Sekaram Naidu": { specialties: "Orthopedic Doctor", degrees: "MBBS, D Ortho" },
+  "Dr. Duvvada Vijay Babu": { specialties: "General Physician", degrees: "MBBS, MD Medicine" },
+  "Dr. Nagarju": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Psychiatry" },
+  "Dr. V Rajeswara Rao": { specialties: "Ophthalmologist", degrees: "MBBS, MS Ophthalmology" },
+  "Dr. Vani D": { specialties: "Nephrologist", degrees: "MBBS, MD Medicine, DM Nephrology" },
+  "Dr. GVS Murthy": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Medicine, DNB Psychiatry, Diploma in Psychiatry" },
+  "Dr. NN Raju": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Medicine, Diploma in Psychiatry" },
+  "Dr. K Bhagya Rekha": { specialties: "Neurologist", degrees: "MBBS, MD Medicine, DM Neurology" },
+  "Dr. Reddy Sreenivasa Rao": { specialties: "Gastroenterologist and Hepatologist", degrees: "MBBS, MD Medicine, DM Gastroenterology" },
+  "Dr. P Siva Kumar": { specialties: "Gastroenterologist and Hepatologist", degrees: "MBBS, MD Medicne, DM Gastroenterology" },
+  "Dr. K V Rami Reddy": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Psychiatry" },
+  "Dr. K Rambabu": { specialties: "Diabetologist, General Physician", degrees: "MBBS, MD Medicine" },
+  "Dr. M V V Gandhi": { specialties: "General Physician", degrees: "MBBS, MD Medicine" },
+  "Dr. B Ganga Raju": { specialties: "Dentist", degrees: "BDS, MDS" },
+  "Dr. Kiran Kumar NVS": { specialties: "Orthopedic Doctor", degrees: "MBBS, MS Orthopaedics" },
+  "Dr. Suman G": { specialties: "Urologist", degrees: "MBBS, MS General Surgery, MCh Urology" },
+  "Dr. GSK Sharma": { specialties: "Joint Replacement Surgeon, Orthopedic Doctor", degrees: "MBBS, MS General Surgery, DNB Orthopedics" },
+  "Dr. Prabhath K": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Psychiatry" },
+  "Dr. Y V S Anita": { specialties: "Nephrologist", degrees: "MBBS, DNB Nephrology" },
+  "Dr. V Ratna Prabha": { specialties: "Nephrologist", degrees: "MBBS, DM Nephrology" },
+  "Dr. Ranga Sandhya": { specialties: "Addiction Psychiatrist", degrees: "MBBS, MD Medicine, DNB Psychiatry, MRCP, Diploma in Relationship Counselling" }
+};
+
 export default function NurseDashboard() {
   const [activeTab, setActiveTab] = useState<'triage' | 'printing'>('triage');
   const [triageQueue, setTriageQueue] = useState<any[]>([]);
@@ -45,7 +87,6 @@ export default function NurseDashboard() {
       });
       setSuccessMessage(`Vitals pushed for ${selectedPatient.name}. Routed to Doctor!`);
       setSelectedPatient(null);
-      // This will now successfully clear the UI boxes because we bound the values to the inputs!
       setVitals({ temp: '', hr: '', bp: '', spo2: '', height: '', weight: '' });
       fetchQueues();
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -54,13 +95,16 @@ export default function NurseDashboard() {
     }
   };
 
-  // ADVANCED HTML PRINT GENERATOR (Models the KIMS layout - Dynamically linked to DB)
+  // ADVANCED HTML PRINT GENERATOR (Vijetha Hospital Layout + KIMS Footer)
   const handleDownload = async (patient: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert("Please allow popups to print the prescription.");
         return;
     }
+
+    // Lookup Doctor Profile
+    const docProfile = DOCTOR_PROFILES[patient.doctor_name] || { specialties: "Consultant Physician", degrees: "MBBS, MD" };
 
     const medicationsHtml = (patient.medications && patient.medications.length > 0) 
       ? patient.medications.map((m: any, index: number) => `
@@ -89,15 +133,17 @@ export default function NurseDashboard() {
         <style>
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000; padding: 40px; max-width: 800px; margin: auto; }
             .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-            .hospital-name { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 0; }
-            .hospital-contact { font-size: 12px; margin: 5px 0 0 0; }
+            .hospital-name { font-size: 28px; font-weight: bold; text-transform: uppercase; margin: 0; letter-spacing: 1px;}
+            .hospital-contact { font-size: 12px; margin: 5px 0 0 0; line-height: 1.4; }
             
             .title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-transform: uppercase; }
             
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #000; margin-bottom: 20px; }
+            /* 3-Column Grid for Details Block */
+            .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #000; margin-bottom: 20px; }
             .info-col { padding: 10px; }
-            .info-col:first-child { border-right: 1px solid #000; }
-            .info-line { margin: 5px 0; font-size: 14px; }
+            .info-col:not(:last-child) { border-right: 1px solid #000; }
+            .info-line { margin: 5px 0; font-size: 13px; line-height: 1.4; }
+            .info-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: bold;}
             
             .assessment-grid { display: grid; grid-template-columns: 2fr 1fr; border: 1px solid #000; border-top: none; margin-top: -20px; margin-bottom: 20px; }
             .vitals-box { padding: 10px; border-right: 1px solid #000; }
@@ -110,29 +156,44 @@ export default function NurseDashboard() {
             th, td { border: 1px solid #000; padding: 8px; text-align: left; }
             th { background-color: #f0f0f0; }
             
+            /* UPDATED FOOTER SECTION - NO DASHED LINE, FULL DETAILS */
             .footer { margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .sign-box { text-align: center; }
-            .sign-line { border-top: 1px dashed #000; padding-top: 5px; width: 200px; font-weight: bold; font-size: 14px; margin-top: 40px;}
+            .sign-box { text-align: right; line-height: 1.6; }
+            .doc-name { font-weight: bold; font-size: 15px; margin-top: 30px; text-transform: uppercase; }
+            .doc-degrees { font-size: 13px; text-transform: uppercase; }
+            .doc-specialty { font-size: 13px; text-transform: uppercase; font-weight: bold; }
+            .print-time { font-size: 12px; margin-top: 10px; font-weight: 500; }
         </style>
     </head>
     <body>
         <div class="header">
-            <h1 class="hospital-name">HOSPITAL NAME HERE</h1>
-            <p class="hospital-contact">Hospital Address Line 1, City, State ZIP<br>Phone: +91-XXXXXXXXXX | Email: contact@hospital.com | Web: www.hospital.com</p>
+            <h1 class="hospital-name">VIJETHA HOSPITAL</h1>
+            <p class="hospital-contact">
+                18-1-15,16, KGH Down, Near KGH Down Road, Maharani Peta, Visakhapatnam, Andhra Pradesh 530002<br>
+                Phone: 089125 50355 | Email: vijethahospitalvsp@gmail.com | Web: vijethahospitalvsp.in
+            </p>
         </div>
 
         <div class="title">DEPARTMENT OF ${patient.department || 'GENERAL MEDICINE'}<br>OUT PATIENT ASSESSMENT RECORD</div>
 
         <div class="info-grid">
             <div class="info-col">
+                <div class="info-label">Patient Details</div>
                 <div class="info-line"><strong>${patient.name.toUpperCase()}</strong></div>
                 <div class="info-line">Age/Gender: ${patient.age || '--'} / ${patient.gender || '--'}</div>
                 <div class="info-line">Phone: ${patient.phone || 'N/A'}</div>
             </div>
             <div class="info-col">
+                <div class="info-label">Consult Details</div>
                 <div class="info-line"><strong>Consult ID:</strong> ${patient.visit_id}</div>
                 <div class="info-line"><strong>Consult Date:</strong> ${new Date().toLocaleDateString()}</div>
-                <div class="info-line"><strong>Physician:</strong> ${patient.doctor_name ? patient.doctor_name.toUpperCase() : '--'}</div>
+                <div class="info-line"><strong>Dept:</strong> ${patient.department || 'General Medicine'}</div>
+            </div>
+            <div class="info-col">
+                <div class="info-label">Physician Details</div>
+                <div class="info-line"><strong>${patient.doctor_name ? patient.doctor_name.toUpperCase() : '--'}</strong></div>
+                <div class="info-line" style="font-size: 11px; font-weight: bold; margin-top: 2px;">${docProfile.degrees}</div>
+                <div class="info-line" style="font-size: 11px; font-style: italic; color: #333;">${docProfile.specialties}</div>
             </div>
         </div>
 
@@ -196,8 +257,10 @@ export default function NurseDashboard() {
                 Date: ${patient.follow_up || 'As Directed'}
             </div>
             <div class="sign-box">
-                <div class="sign-line">${patient.doctor_name ? patient.doctor_name.toUpperCase() : 'AUTHORIZED SIGNATORY'}</div>
-                <div style="font-size: 10px; margin-top: 5px;">Printed On: ${new Date().toLocaleString()}</div>
+                <div class="doc-name">${patient.doctor_name ? patient.doctor_name.toUpperCase() : 'AUTHORIZED SIGNATORY'}</div>
+                <div class="doc-degrees">${docProfile.degrees}</div>
+                <div class="doc-specialty">${docProfile.specialties}</div>
+                <div class="print-time">Printed On: ${new Date().toLocaleString()}</div>
             </div>
         </div>
         
