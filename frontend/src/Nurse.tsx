@@ -45,6 +45,7 @@ export default function NurseDashboard() {
       });
       setSuccessMessage(`Vitals pushed for ${selectedPatient.name}. Routed to Doctor!`);
       setSelectedPatient(null);
+      // This will now successfully clear the UI boxes because we bound the values to the inputs!
       setVitals({ temp: '', hr: '', bp: '', spo2: '', height: '', weight: '' });
       fetchQueues();
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -61,7 +62,6 @@ export default function NurseDashboard() {
         return;
     }
 
-    // Dynamically generate the table rows for medications
     const medicationsHtml = (patient.medications && patient.medications.length > 0) 
       ? patient.medications.map((m: any, index: number) => `
           <tr>
@@ -80,7 +80,6 @@ export default function NurseDashboard() {
           </td>
          </tr>`;
 
-    // Build the full HTML document
     const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -139,14 +138,32 @@ export default function NurseDashboard() {
 
         <div class="assessment-grid">
             <div class="vitals-box">
-                <div class="section-title">Vitals Recorded</div>
-                <div class="vitals-data">
-                    <strong>BP:</strong> ${patient.bp || '--'} mmHg<br>
-                    <strong>Temp:</strong> ${patient.temperature || '--'} &deg;F<br>
-                    <strong>Heart Rate:</strong> ${patient.heart_rate || '--'} bpm<br>
-                    <strong>SpO2:</strong> ${patient.spo2 || '--'} %<br>
-                    <strong>Weight:</strong> ${patient.weight || '--'} kg<br>
-                    <strong>BMI:</strong> ${patient.bmi || '--'}
+                <div class="section-title" style="margin-bottom: 12px;">VITALS</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 15px; font-size: 12px; line-height: 1.4;">
+                    <div>
+                        <span style="font-weight: bold;">Temp :</span><br>
+                        ${patient.temperature || '--'} &deg;F
+                    </div>
+                    <div>
+                        <span style="font-weight: bold;">HR :</span><br>
+                        ${patient.heart_rate || '--'} /min
+                    </div>
+                    <div>
+                        <span style="font-weight: bold;">BP (mmHg) :</span><br>
+                        ${patient.bp || '--'}
+                    </div>
+                    <div>
+                        <span style="font-weight: bold;">SpO2 :</span><br>
+                        ${patient.spo2 || '--'} %
+                    </div>
+                    <div>
+                        <span style="font-weight: bold;">Weight :</span><br>
+                        ${patient.weight || '--'} kgs
+                    </div>
+                    <div>
+                        <span style="font-weight: bold;">BMI :</span><br>
+                        ${patient.bmi || '--'}
+                    </div>
                 </div>
             </div>
             <div class="diagnosis-box">
@@ -251,19 +268,74 @@ export default function NurseDashboard() {
                   <div><span className="text-slate-400">Patient:</span> <strong className="text-brand">{selectedPatient.name}</strong></div>
                   <div><span className="text-slate-400">ID:</span> <span className="font-mono">{selectedPatient.visit_id}</span></div>
                 </div>
+                
+                {/* REFINED UI: Persistent Labels and Embedded Units */}
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" step="0.1" required placeholder="Temp (°F)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, temp: e.target.value})} />
-                  <input type="number" required placeholder="Heart Rate (HR)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, hr: e.target.value})} />
-                  <input type="text" required placeholder="BP (mmHg)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, bp: e.target.value})} />
-                  <input type="number" required placeholder="SpO2 (%)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, spo2: e.target.value})} />
-                  <input type="number" required placeholder="Height (cm)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, height: e.target.value})} />
-                  <input type="number" step="0.1" required placeholder="Weight (kg)" className="bg-slate-900 border border-slate-600 rounded p-3 text-sm focus:border-brand" onChange={e => setVitals({...vitals, weight: e.target.value})} />
+                  
+                  {/* Temperature */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Temperature</label>
+                    <div className="relative">
+                      <input type="number" step="0.1" required value={vitals.temp} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-8" onChange={e => setVitals({...vitals, temp: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">°F</span>
+                    </div>
+                  </div>
+
+                  {/* Heart Rate */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Heart Rate</label>
+                    <div className="relative">
+                      <input type="number" required value={vitals.hr} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-10" onChange={e => setVitals({...vitals, hr: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">bpm</span>
+                    </div>
+                  </div>
+
+                  {/* Blood Pressure */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Blood Pressure</label>
+                    <div className="relative">
+                      <input type="text" required value={vitals.bp} placeholder="120/80" className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-12 placeholder-slate-600" onChange={e => setVitals({...vitals, bp: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">mmHg</span>
+                    </div>
+                  </div>
+
+                  {/* SpO2 */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Oxygen (SpO2)</label>
+                    <div className="relative">
+                      <input type="number" required value={vitals.spo2} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-8" onChange={e => setVitals({...vitals, spo2: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">%</span>
+                    </div>
+                  </div>
+
+                  {/* Height */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Height</label>
+                    <div className="relative">
+                      <input type="number" required value={vitals.height} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-8" onChange={e => setVitals({...vitals, height: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">cm</span>
+                    </div>
+                  </div>
+
+                  {/* Weight */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Weight</label>
+                    <div className="relative">
+                      <input type="number" step="0.1" required value={vitals.weight} className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-sm text-white focus:border-brand outline-none pr-8" onChange={e => setVitals({...vitals, weight: e.target.value})} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">kg</span>
+                    </div>
+                  </div>
+
                 </div>
-                <div className="bg-slate-900 p-4 rounded border border-slate-700 flex justify-between items-center">
-                  <span className="text-sm">Calculated BMI</span>
+
+                <div className="bg-slate-900 p-4 rounded border border-slate-700 flex justify-between items-center mt-6">
+                  <span className="text-sm font-semibold uppercase tracking-wider text-slate-400">Calculated BMI</span>
                   <span className="text-xl font-mono text-brand font-bold">{calculateBMI()}</span>
                 </div>
-                <button type="submit" className="w-full bg-brand text-slate-900 font-bold py-3 rounded-lg hover:bg-opacity-90 transition">Forward Data to Doctor</button>
+                
+                <button type="submit" className="w-full bg-brand text-slate-900 font-bold py-3 rounded-lg hover:bg-opacity-90 transition mt-6">
+                  Forward Data to Doctor
+                </button>
               </form>
             ) : <div className="h-48 flex items-center justify-center text-slate-500 italic">Select patient from triage list.</div>}
           </div>
