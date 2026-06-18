@@ -53,19 +53,34 @@ export default function NurseDashboard() {
     }
   };
 
-  // ADVANCED HTML PRINT GENERATOR (Models the KIMS layout)
+  // ADVANCED HTML PRINT GENERATOR (Models the KIMS layout - Dynamically linked to DB)
   const handleDownload = async (patient: any) => {
-    // We need to fetch the full patient details (including meds) from the backend for the printout.
-    // To do this properly without rewriting the whole backend right now, we will structure the HTML
-    // based on the data we already have in the queue, plus placeholder structure for medications.
-    // Note: In a true production app, you would fetch a specific /api/prescription/<visit_id> route here.
-
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert("Please allow popups to print the prescription.");
         return;
     }
 
+    // Dynamically generate the table rows for medications
+    const medicationsHtml = (patient.medications && patient.medications.length > 0) 
+      ? patient.medications.map((m: any, index: number) => `
+          <tr>
+              <td>${index + 1}</td>
+              <td><strong>${m.name}</strong></td>
+              <td>${m.route}</td>
+              <td>${m.dose}</td>
+              <td>${m.frequency}</td>
+              <td>${m.timing}</td>
+              <td>${m.duration}</td>
+          </tr>
+      `).join('')
+      : `<tr>
+          <td colspan="7" style="text-align:center; font-style:italic; padding: 20px;">
+              No medications prescribed.
+          </td>
+         </tr>`;
+
+    // Build the full HTML document
     const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -112,13 +127,13 @@ export default function NurseDashboard() {
         <div class="info-grid">
             <div class="info-col">
                 <div class="info-line"><strong>${patient.name.toUpperCase()}</strong></div>
-                <div class="info-line">Age/Gender: ${patient.age} / ${patient.gender}</div>
-                <div class="info-line">Phone: [Available in DB]</div>
+                <div class="info-line">Age/Gender: ${patient.age || '--'} / ${patient.gender || '--'}</div>
+                <div class="info-line">Phone: ${patient.phone || 'N/A'}</div>
             </div>
             <div class="info-col">
                 <div class="info-line"><strong>Consult ID:</strong> ${patient.visit_id}</div>
                 <div class="info-line"><strong>Consult Date:</strong> ${new Date().toLocaleDateString()}</div>
-                <div class="info-line"><strong>Physician:</strong> ${patient.doctor_name.toUpperCase()}</div>
+                <div class="info-line"><strong>Physician:</strong> ${patient.doctor_name ? patient.doctor_name.toUpperCase() : '--'}</div>
             </div>
         </div>
 
@@ -126,12 +141,17 @@ export default function NurseDashboard() {
             <div class="vitals-box">
                 <div class="section-title">Vitals Recorded</div>
                 <div class="vitals-data">
-                    [System holds vitals in DB. They will print here upon full API integration.]
+                    <strong>BP:</strong> ${patient.bp || '--'} mmHg<br>
+                    <strong>Temp:</strong> ${patient.temperature || '--'} &deg;F<br>
+                    <strong>Heart Rate:</strong> ${patient.heart_rate || '--'} bpm<br>
+                    <strong>SpO2:</strong> ${patient.spo2 || '--'} %<br>
+                    <strong>Weight:</strong> ${patient.weight || '--'} kg<br>
+                    <strong>BMI:</strong> ${patient.bmi || '--'}
                 </div>
             </div>
             <div class="diagnosis-box">
                 <div class="section-title">Diagnosis</div>
-                <strong>${patient.diagnosis.toUpperCase()}</strong>
+                <strong>${patient.diagnosis ? patient.diagnosis.toUpperCase() : '--'}</strong>
             </div>
         </div>
 
@@ -149,28 +169,22 @@ export default function NurseDashboard() {
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td colspan="7" style="text-align:center; font-style:italic; padding: 20px;">
-                        Medication details securely stored in ClinicFlow Database.<br>
-                        (Connect backend /api/prescription route to populate this table).
-                    </td>
-                </tr>
+                ${medicationsHtml}
             </tbody>
         </table>
 
         <div class="footer">
             <div>
                 <strong>FOLLOW UP</strong><br>
-                Date: [From DB]
+                Date: ${patient.follow_up || 'As Directed'}
             </div>
             <div class="sign-box">
-                <div class="sign-line">${patient.doctor_name.toUpperCase()}</div>
+                <div class="sign-line">${patient.doctor_name ? patient.doctor_name.toUpperCase() : 'AUTHORIZED SIGNATORY'}</div>
                 <div style="font-size: 10px; margin-top: 5px;">Printed On: ${new Date().toLocaleString()}</div>
             </div>
         </div>
         
         <script>
-            // Automatically open print dialog when window loads
             window.onload = function() {
                 window.print();
             }
@@ -271,7 +285,7 @@ export default function NurseDashboard() {
                     <p className="text-sm text-slate-400 mt-1">Diagnosis: <span className="font-mono text-amber-400 font-semibold">{p.diagnosis}</span></p>
                   </div>
                   
-                  {/* CHANGED: View/Print Report Button */}
+                  {/* View/Print Report Button */}
                   <div className="mt-6 flex gap-2">
                     <button onClick={() => handleDownload(p)} className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-semibold py-2 rounded flex items-center justify-center gap-2 transition text-sm">
                       <Download size={16} /> Print Report

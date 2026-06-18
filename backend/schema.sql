@@ -1,13 +1,13 @@
 CREATE TABLE IF NOT EXISTS patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    dob DATE,                      -- NEW: Stores the actual birth date from the calendar picker
-    age INTEGER,                   -- UPDATED: Enforced as an integer, not text
+    dob DATE,                      
+    age INTEGER,                   
     gender TEXT,
     phone TEXT,
     address TEXT,
-    organ_donor BOOLEAN DEFAULT 0, -- NEW: MedChain Hook (Flags highly sensitive data)
-    blockchain_hash TEXT,          -- NEW: MedChain Hook (Stores the cryptographic transaction ID)
+    organ_donor BOOLEAN DEFAULT 0, 
+    blockchain_hash TEXT,          
     registration_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS visits (
     department TEXT,
     doctor_name TEXT,
     visit_type TEXT, 
-    status TEXT DEFAULT 'WAITING_VITALS', -- Queue Status: WAITING_VITALS, WAITING_DOCTOR, WAITING_PRINT, COMPLETED
+    status TEXT DEFAULT 'WAITING_VITALS', 
     visit_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients (id)
 );
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS vitals (
     height REAL,
     weight REAL,
     bmi REAL,
-    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- NEW: Legal audit timestamp for nursing
+    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
     FOREIGN KEY (visit_id) REFERENCES visits (visit_id)
 );
 
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     visit_id TEXT,
     diagnosis TEXT,
     follow_up_date TEXT,
-    prescribed_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- NEW: Legal audit timestamp for physicians
+    prescribed_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
     FOREIGN KEY (visit_id) REFERENCES visits (visit_id)
 );
 

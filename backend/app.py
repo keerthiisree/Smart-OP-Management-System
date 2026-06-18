@@ -24,8 +24,9 @@ def register():
     db = get_db_connection()
     cursor = db.cursor()
     
-    cursor.execute("INSERT INTO patients (name, age, gender, phone, address) VALUES (?, ?, ?, ?, ?)",
-                   (data.get('name'), data.get('age'), data.get('gender'), data.get('phone'), data.get('address')))
+    # UPDATED: Added 'dob' to ensure the calendar date from the UI is saved to the database
+    cursor.execute("INSERT INTO patients (name, age, dob, gender, phone, address) VALUES (?, ?, ?, ?, ?, ?)",
+                   (data.get('name'), data.get('age'), data.get('dob'), data.get('gender'), data.get('phone'), data.get('address')))
     patient_id = cursor.lastrowid
     
     visit_id = f"OPC{uuid.uuid4().hex[:8].upper()}"
@@ -39,25 +40,49 @@ def register():
 @app.route('/api/queue/nurse', methods=['GET'])
 def get_nurse_queue():
     db = get_db_connection()
-    # Fetch both queues for the two nurse tabs
+    
+    # 1. Fetch Triage Queue (Waiting for Vitals)
     waiting = db.execute('''
         SELECT v.visit_id, p.name, p.age, p.gender, v.department 
         FROM visits v JOIN patients p ON v.patient_id = p.id 
         WHERE v.status = 'WAITING_VITALS'
     ''').fetchall()
     
-    printing = db.execute('''
-        SELECT v.visit_id, p.name, p.age, p.gender, pr.diagnosis, v.doctor_name
+    # 2. Fetch Print Queue (Waiting for Print - NOW WITH VITALS AND PHONE)
+    printing_rows = db.execute('''
+        SELECT 
+            v.visit_id, v.department, v.doctor_name,
+            p.name, p.age, p.gender, p.phone,
+            pr.id as prescription_id, pr.diagnosis, pr.follow_up_date as follow_up,
+            vt.temperature, vt.heart_rate, vt.bp, vt.spO2 as spo2, vt.weight, vt.bmi
         FROM visits v 
         JOIN patients p ON v.patient_id = p.id 
         JOIN prescriptions pr ON v.visit_id = pr.visit_id
+        LEFT JOIN vitals vt ON v.visit_id = vt.visit_id
         WHERE v.status = 'WAITING_PRINT'
     ''').fetchall()
+    
+    # 3. Loop through print queue to attach the Medications list to each patient
+    printing_list = []
+    for row in printing_rows:
+        patient_dict = dict(row)
+        
+        # Fetch the medications specifically tied to this prescription
+        meds = db.execute('''
+            SELECT medicine_name as name, route, dose, frequency, timing, duration 
+            FROM medications 
+            WHERE prescription_id = ?
+        ''', (patient_dict['prescription_id'],)).fetchall()
+        
+        # Attach the meds array to the patient dictionary
+        patient_dict['medications'] = [dict(m) for m in meds]
+        printing_list.append(patient_dict)
+        
     db.close()
     
     return jsonify({
         "waiting": [dict(ix) for ix in waiting],
-        "printing": [dict(ix) for ix in printing]
+        "printing": printing_list
     })
 
 @app.route('/api/vitals', methods=['POST'])
@@ -78,10 +103,9 @@ def submit_vitals():
 @app.route('/api/queue/doctor', methods=['GET'])
 def get_doctor_queue():
     db = get_db_connection()
-    # UPDATED: Added heart_rate, bmi, spO2 to the SELECT statement
     visits = db.execute('''
         SELECT v.visit_id, p.name, p.age, p.gender, 
-               vt.temperature, vt.bp, vt.heart_rate, vt.bmi, vt.spO2, vt.weight 
+               vt.temperature, vt.bp, vt.heart_rate, vt.bmi, vt.spO2 as spo2, vt.weight 
         FROM visits v 
         JOIN patients p ON v.patient_id = p.id 
         LEFT JOIN vitals vt ON v.visit_id = vt.visit_id
@@ -106,7 +130,6 @@ def prescribe():
                           VALUES (?, ?, ?, ?, ?, ?, ?)''',
                        (prescription_id, med['name'], med['route'], med['dose'], med['frequency'], med['timing'], med['duration']))
                        
-    # Send patient back to the nurse for printing
     db.execute("UPDATE visits SET status = 'WAITING_PRINT' WHERE visit_id = ?", (visit_id,))
     db.commit()
     db.close()
