@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { signMessage } from './cryptoUtils';
+import { API_BASE } from './config';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 // UPDATED: Added heart_rate, bmi, and spO2 to the interface
@@ -36,11 +38,42 @@ export default function DoctorDashboard() {
   ]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
+  const [selectedDoctorId, setSelectedDoctorId] = useState('DOC-505');
+  const [privateKey, setPrivateKey] = useState('');
+  const [isDemoKey, setIsDemoKey] = useState(false);
+  const [demoKeys, setDemoKeys] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/demo_keys`)
+      .then(res => res.json())
+      .then(keys => {
+        setDemoKeys(keys);
+        if (keys[selectedDoctorId] && keys[selectedDoctorId].private_key) {
+          setPrivateKey(keys[selectedDoctorId].private_key);
+          setIsDemoKey(true);
+        }
+      })
+      .catch(err => {
+        console.warn("Could not fetch demo keys automatically:", err);
+      });
+  }, []);
+
+  // Auto-load private key when doctor selection changes
+  useEffect(() => {
+    if (demoKeys[selectedDoctorId] && demoKeys[selectedDoctorId].private_key) {
+      setPrivateKey(demoKeys[selectedDoctorId].private_key);
+      setIsDemoKey(true);
+    } else {
+      setPrivateKey('');
+      setIsDemoKey(false);
+    }
+  }, [selectedDoctorId, demoKeys]);
+  
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const fetchQueue = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/queue/doctor');
+      const response = await fetch(`${API_BASE}/api/queue/doctor`);
       const data = await response.json();
       setQueue(data);
     } catch (err) {
@@ -77,6 +110,10 @@ export default function DoctorDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) return;
+    if (!privateKey) {
+      alert("Error: Private key is required to sign the transaction. Please load a demo key or paste a PEM key.");
+      return;
+    }
 
     const processedMeds = medications.map(m => ({
       name: m.name,
@@ -88,20 +125,42 @@ export default function DoctorDashboard() {
     }));
 
     try {
-      await fetch('http://127.0.0.1:5000/api/prescribe', {
+      // Sign message: "visitId:PRESCRIPTION"
+      const message = `${selectedPatient.visit_id}:PRESCRIPTION`;
+      const signature = await signMessage(privateKey, message);
+
+      const nonce = crypto.randomUUID();
+      const payload = {
+        visit_id: selectedPatient.visit_id,
+        diagnosis,
+        follow_up: followUp,
+        medications: processedMeds,
+        doctor_id: selectedDoctorId,
+        signature,
+        nonce
+      };
+
+      const response = await fetch(`${API_BASE}/api/prescribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visit_id: selectedPatient.visit_id, diagnosis, follow_up: followUp, medications: processedMeds })
+        body: JSON.stringify(payload)
       });
 
-      setSuccessMessage(`Prescription saved! Sent back to Nurse for Printing.`);
-      setSelectedPatient(null);
-      setDiagnosis('');
-      setFollowUp('');
-      setMedications([{ name: '', route: 'Oral', morning: false, afternoon: false, night: false, timing: 'After Food', duration: 1 }]);
-      fetchQueue();
-      setTimeout(() => setSuccessMessage(null), 4000);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage(`Prescription saved! Sent back to Nurse for Printing.`);
+        setSelectedPatient(null);
+        setDiagnosis('');
+        setFollowUp('');
+        setMedications([{ name: '', route: 'Oral', morning: false, afternoon: false, night: false, timing: 'After Food', duration: 1 }]);
+        fetchQueue();
+        setTimeout(() => setSuccessMessage(null), 4000);
+      } else {
+        alert(`Server Error: ${data.error || "Could not save prescription."}`);
+      }
     } catch (err) {
+      alert("Cryptographic or Network Error: Verify backend is running and private key is correct.");
       console.error(err);
     }
   };
@@ -132,6 +191,42 @@ export default function DoctorDashboard() {
         <div className="lg:col-span-3 bg-slate-800 p-6 rounded-xl border border-slate-700">
           <h2 className="text-xl font-bold text-brand mb-4 border-b border-slate-700 pb-2">Physician Assessment</h2>
           {successMessage && <div className="bg-emerald-900 text-emerald-200 p-4 rounded mb-6 font-semibold">{successMessage}</div>}
+
+          {/* 🔑 Cryptographic Keys Section */}
+          <div className="mb-6 p-4 bg-slate-900/60 rounded-lg border border-slate-700">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">🔑 Cryptographic Keys</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1 font-semibold">Select Physician ID</label>
+                <select
+                  value={selectedDoctorId}
+                  onChange={e => setSelectedDoctorId(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-600 rounded p-2.5 text-xs text-white outline-none focus:border-brand"
+                >
+                  <option value="DOC-505">DOC-505 (Doctor)</option>
+                  <option value="DOC-911">DOC-911 (Doctor)</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 flex flex-col justify-end">
+                <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Private Key Status:</span>
+                  <span className={isDemoKey ? "text-emerald-400" : "text-amber-400 font-semibold"}>
+                    {isDemoKey ? "✓ Demo Key Loaded Automatically" : "⚠ Manual Private Key Required"}
+                  </span>
+                </div>
+                <textarea
+                  value={privateKey}
+                  onChange={e => {
+                    setPrivateKey(e.target.value);
+                    setIsDemoKey(false);
+                  }}
+                  placeholder="Paste Doctor private key PEM here..."
+                  rows={1}
+                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs font-mono focus:outline-none focus:border-brand text-slate-300"
+                />
+              </div>
+            </div>
+          </div>
 
           {selectedPatient ? (
             <form onSubmit={handleSubmit} className="space-y-6">

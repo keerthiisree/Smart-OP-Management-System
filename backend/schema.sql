@@ -56,3 +56,15 @@ CREATE TABLE IF NOT EXISTS medications (
     duration TEXT,
     FOREIGN KEY (prescription_id) REFERENCES prescriptions (id)
 );
+
+-- Blockchain audit cross-reference: links each SQL record to its on-chain block
+CREATE TABLE IF NOT EXISTS blockchain_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    visit_id TEXT NOT NULL,
+    action TEXT NOT NULL,           -- REGISTER | VITALS | PRESCRIPTION
+    user_id TEXT NOT NULL,          -- Staff ID who performed the action
+    block_index INTEGER NOT NULL,   -- Index in ledger.json
+    block_hash TEXT NOT NULL,       -- Hash of the sealed block
+    sealed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (visit_id) REFERENCES visits (visit_id)
+);

@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { signMessage } from './cryptoUtils';
+import { API_BASE } from './config';
 
 // OFFICIAL HOSPITAL DIRECTORY 
 // Cleaned, Fully Separated, and Alphabetized by Department
@@ -109,6 +111,22 @@ export default function ReceptionistDashboard() {
   });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generatedId, setGeneratedId] = useState<string | null>(null);
+  const [privateKey, setPrivateKey] = useState('');
+  const [isDemoKey, setIsDemoKey] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/demo_keys`)
+      .then(res => res.json())
+      .then(keys => {
+        if (keys['REC-101'] && keys['REC-101'].private_key) {
+          setPrivateKey(keys['REC-101'].private_key);
+          setIsDemoKey(true);
+        }
+      })
+      .catch(err => {
+        console.warn("Could not fetch demo keys automatically:", err);
+      });
+  }, []);
 
   const dobInputRef = useRef<HTMLInputElement>(null);
 
@@ -172,10 +190,30 @@ export default function ReceptionistDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!privateKey) {
+      alert("Error: Private key is required to sign the transaction. Please load a demo key or paste a PEM key.");
+      return;
+    }
+
     try {
-      const payload = { ...formData, age: calculateAge(formData.dob) };
+      // Generate patient ID locally
+      const patientId = `PAT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       
-      const response = await fetch('http://127.0.0.1:5000/api/register', {
+      // Sign message: "patientId:REGISTER"
+      const message = `${patientId}:REGISTER`;
+      const signature = await signMessage(privateKey, message);
+
+      const nonce = crypto.randomUUID();
+      const payload = {
+        ...formData,
+        patient_id: patientId,
+        age: calculateAge(formData.dob),
+        receptionist_id: "REC-101",
+        signature,
+        nonce
+      };
+      
+      const response = await fetch(`${API_BASE}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -190,11 +228,11 @@ export default function ReceptionistDashboard() {
         
         setTimeout(() => setSuccessMessage(null), 5000);
       } else {
-        alert(`Server Error: Could not register patient. The database might be missing a required field.`);
+        alert(`Server Error: ${data.error || "Could not register patient."}`);
         console.error("Server returned:", data);
       }
     } catch (err) {
-      alert("Network Error: Could not connect to the Python backend. Is app.py running?");
+      alert("Cryptographic or Network Error: Verify backend is running and private key is correct.");
       console.error("Error registering patient:", err);
     }
   };
@@ -212,6 +250,29 @@ export default function ReceptionistDashboard() {
         <div className="border-b border-slate-700 pb-4 mb-6">
           <h2 className="text-3xl font-bold text-brand">Hospital Front Desk</h2>
           <p className="text-slate-400 text-sm mt-1">Out-Patient Registration & Routing Module</p>
+        </div>
+
+        {/* 🔑 Cryptographic Keys Section */}
+        <div className="mb-6 p-4 bg-slate-900/60 rounded-lg border border-slate-700">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">🔑 Cryptographic Keys</h3>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between text-xs text-slate-400">
+              <span>Terminal Operator Identity: <strong className="text-brand">REC-101 (Receptionist)</strong></span>
+              <span className={isDemoKey ? "text-emerald-400" : "text-amber-400 font-semibold"}>
+                {isDemoKey ? "✓ Demo Key Loaded Automatically" : "⚠ Manual Private Key Required"}
+              </span>
+            </div>
+            <textarea
+              value={privateKey}
+              onChange={e => {
+                setPrivateKey(e.target.value);
+                setIsDemoKey(false);
+              }}
+              placeholder="Paste REC-101 private key PEM here..."
+              rows={2}
+              className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-xs font-mono focus:outline-none focus:border-brand text-slate-300"
+            />
+          </div>
         </div>
 
         {successMessage && (

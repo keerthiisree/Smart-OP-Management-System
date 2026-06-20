@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { signMessage } from './cryptoUtils';
 import { Heart, Printer, Download } from 'lucide-react';
+import { API_BASE } from './config';
 
 // DOCTOR PROFILES DIRECTORY (For Print Lookups)
 const DOCTOR_PROFILES: Record<string, { specialties: string, degrees: string }> = {
@@ -50,10 +52,26 @@ export default function NurseDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [vitals, setVitals] = useState({ temp: '', hr: '', bp: '', spo2: '', height: '', weight: '' });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [privateKey, setPrivateKey] = useState('');
+  const [isDemoKey, setIsDemoKey] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/demo_keys`)
+      .then(res => res.json())
+      .then(keys => {
+        if (keys['NUR-202'] && keys['NUR-202'].private_key) {
+          setPrivateKey(keys['NUR-202'].private_key);
+          setIsDemoKey(true);
+        }
+      })
+      .catch(err => {
+        console.warn("Could not fetch demo keys automatically:", err);
+      });
+  }, []);
 
   const fetchQueues = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/queue/nurse');
+      const response = await fetch(`${API_BASE}/api/queue/nurse`);
       const data = await response.json();
       setTriageQueue(data.waiting);
       setPrintQueue(data.printing);
@@ -78,19 +96,45 @@ export default function NurseDashboard() {
   const handleTriageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) return;
+    if (!privateKey) {
+      alert("Error: Private key is required to sign the transaction. Please load a demo key or paste a PEM key.");
+      return;
+    }
 
     try {
-      await fetch('http://127.0.0.1:5000/api/vitals', {
+      // Sign message: "visitId:VITALS"
+      const message = `${selectedPatient.visit_id}:VITALS`;
+      const signature = await signMessage(privateKey, message);
+
+      const nonce = crypto.randomUUID();
+      const payload = {
+        visit_id: selectedPatient.visit_id,
+        ...vitals,
+        bmi: calculateBMI(),
+        nurse_id: "NUR-202",
+        signature,
+        nonce
+      };
+
+      const response = await fetch(`${API_BASE}/api/vitals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visit_id: selectedPatient.visit_id, ...vitals, bmi: calculateBMI() })
+        body: JSON.stringify(payload)
       });
-      setSuccessMessage(`Vitals pushed for ${selectedPatient.name}. Routed to Doctor!`);
-      setSelectedPatient(null);
-      setVitals({ temp: '', hr: '', bp: '', spo2: '', height: '', weight: '' });
-      fetchQueues();
-      setTimeout(() => setSuccessMessage(null), 3000);
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage(`Vitals pushed for ${selectedPatient.name}. Routed to Doctor!`);
+        setSelectedPatient(null);
+        setVitals({ temp: '', hr: '', bp: '', spo2: '', height: '', weight: '' });
+        fetchQueues();
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        alert(`Server Error: ${data.error || "Could not submit vitals."}`);
+      }
     } catch (err) {
+      alert("Cryptographic or Network Error: Verify backend is running and private key is correct.");
       console.error(err);
     }
   };
@@ -279,7 +323,7 @@ export default function NurseDashboard() {
 
   const handlePrintComplete = async (visitId: string, name: string) => {
     try {
-      await fetch('http://127.0.0.1:5000/api/print/complete', {
+      await fetch(`${API_BASE}/api/print/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visit_id: visitId })
@@ -325,6 +369,29 @@ export default function NurseDashboard() {
           <div className="lg:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700">
             <h2 className="text-xl font-bold text-brand mb-4 border-b border-slate-700 pb-2">Record Vitals</h2>
             {successMessage && <div className="bg-emerald-900 p-4 rounded mb-4 font-semibold text-sm">{successMessage}</div>}
+
+            {/* 🔑 Cryptographic Keys Section */}
+            <div className="mb-6 p-4 bg-slate-900/60 rounded-lg border border-slate-700">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">🔑 Cryptographic Keys</h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span>Terminal Operator Identity: <strong className="text-brand">NUR-202 (Nurse)</strong></span>
+                  <span className={isDemoKey ? "text-emerald-400" : "text-amber-400 font-semibold"}>
+                    {isDemoKey ? "✓ Demo Key Loaded Automatically" : "⚠ Manual Private Key Required"}
+                  </span>
+                </div>
+                <textarea
+                  value={privateKey}
+                  onChange={e => {
+                    setPrivateKey(e.target.value);
+                    setIsDemoKey(false);
+                  }}
+                  placeholder="Paste NUR-202 private key PEM here..."
+                  rows={2}
+                  className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-xs font-mono focus:outline-none focus:border-brand text-slate-300"
+                />
+              </div>
+            </div>
             {selectedPatient ? (
               <form onSubmit={handleTriageSubmit} className="space-y-6">
                 <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 flex flex-wrap gap-x-6 gap-y-2 text-sm">

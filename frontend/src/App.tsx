@@ -2,7 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import ReceptionistDashboard from './Receptionist';
 import NurseDashboard from './Nurse';
 import DoctorDashboard from './Doctor';
-import { Activity, UserPlus, Heart, Stethoscope } from 'lucide-react';
+import BlockchainExplorer from './BlockchainExplorer';
+import { Activity, UserPlus, Heart, Stethoscope, Shield } from 'lucide-react';
 
 function App() {
   return (
@@ -27,6 +28,9 @@ function App() {
               <Link to="/doctor" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 text-slate-300 hover:text-brand transition">
                 <Stethoscope size={16} /> <span className="hidden md:inline">Physician desk</span>
               </Link>
+              <Link to="/explorer" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 text-slate-300 hover:text-purple-400 transition">
+                <Shield size={16} /> <span className="hidden md:inline">⛓ Chain Explorer</span>
+              </Link>
             </div>
           </div>
         </nav>
@@ -37,6 +41,7 @@ function App() {
             <Route path="/reception" element={<ReceptionistDashboard />} />
             <Route path="/nurse" element={<NurseDashboard />} />
             <Route path="/doctor" element={<DoctorDashboard />} />
+            <Route path="/explorer" element={<BlockchainExplorer />} />
             <Route path="/" element={
               <div className="max-w-4xl mx-auto text-center mt-24 px-6">
                 <div className="inline-flex p-4 bg-slate-900 rounded-2xl border border-slate-800 mb-6 text-brand shadow-xl">
